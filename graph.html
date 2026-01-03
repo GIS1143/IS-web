@@ -57,7 +57,7 @@ async function loadAndRender(){
       logs = await res2.json();
     }
   } catch(e){
-    console.error('ไม่สามารถโหลด logs จาก server:', e);
+    console.error('can not load logs from server:', e);
   }
 
   const studentScores = [];
@@ -134,14 +134,8 @@ async function loadAndRender(){
     <h3>🧾 ปริมาณขยะรวม: ${totalWasteItems} ชิ้น</h3>
   `;
 }
-
-// เรียกฟังก์ชัน
 loadAndRender();
-
-// ถ้าต้องการ real-time: refresh ทุก 3 วินาที
 setInterval(loadAndRender, 3000);
-
-
   loadAndRender();
 </script>
 
