@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>กราฟคะแนน</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family:'Sarabun'; margin:28px; background:#fbf8ee; color:#333; }
+    h2 { font-family:'Prompt'; text-align:center; color:#4a897e; font-size:30px; }
+    .quote { text-align:center; color:#666; margin-bottom:12px; font-size:13px; }
+    canvas { max-width:100%; display:block; margin: 18px auto; }
+    .summary { max-width:900px; margin: 16px auto; padding:14px; background:#f9f9f9; border-radius:12px; }
+    ul{ padding-left:0; list-style:none; color:#345; }
+    li{ margin:6px 0; }
+  </style>
+</head>
+<body>
+  <div class="quote">"1 ขวดพลาสติก ใช้เวลาย่อยสลาย 450 ปี — แต่ 1 การตัดสินใจทิ้งให้ถูกที่ ใช้เวลาไม่ถึง 5 วินาที"</div>
+  <h2>📊 กราฟคะแนนสะสมของนักเรียน</h2>
+  <canvas id="scoreChart" height="160"></canvas>
+
+  <div class="summary" id="summaryBox"></div>
+
+<script>
+  const wasteKeyMap = {
+  A: "ขวดพลาสติก",
+  B: "พลาสติกอื่นๆ",
+  C: "ขยะทั่วไป",
+  D: "ขยะถังรวม"
+};
+
+  const scoreMap = {
+    "ขวดพลาสติก": 10,
+    "พลาสติกอื่นๆ": 5,
+    "ขยะทั่วไป": 3,
+  "ขยะถังรวม":0,
+    "เพิ่มคะแนน": 1,
+    "หักคะแนน": -1
+  };
+async function loadAndRender(){
+  let nameMap = {};
+  try {
+    const res = await fetch('students.json');
+    if(res.ok){
+      const data = await res.json();
+      data.forEach(s => nameMap[s.id] = s.name);
+    }
+  } catch(e){ console.warn('students.json not loaded', e); }
+
+  let logs = {};
+  try {
+    const res2 = await fetch("https://robotwaste-server-2.onrender.com/logs");
+    if(res2.ok){
+      logs = await res2.json();
+    }
+  } catch(e){
+    console.error('ไม่สามารถโหลด logs จาก server:', e);
+  }
+
+  const studentScores = [];
+  const wasteTypeCounts = { "ขวดพลาสติก":0, "พลาสติกอื่นๆ":0, "ขยะทั่วไป":0 ,"ขยะถังรวม":0};
+  let totalWasteItems = 0;
+
+  for(const studentId in logs){
+    const entries = logs[studentId];
+    let total = 0;
+
+    entries.forEach(e=>{
+      const score = ( (e.A||0)*10 + (e.B||0)*5 + (e.C||0)*3 + (e.D||0)*0 );
+      total += score;
+
+      wasteTypeCounts["ขวดพลาสติก"] += e.A||0;
+      wasteTypeCounts["พลาสติกอื่นๆ"] += e.B||0;
+      wasteTypeCounts["ขยะทั่วไป"] += e.C||0;
+      wasteTypeCounts["ขยะถังรวม"] += e.D||0;
+      totalWasteItems += (e.A||0) + (e.B||0) + (e.C||0) + (e.D||0);
+    });
+
+    studentScores.push({ studentId, total });
+  }
+
+  studentScores.sort((a,b)=>b.total - a.total);
+  const labels = studentScores.map(e => nameMap[e.studentId] || e.studentId);
+  const scores = studentScores.map(e => e.total);
+
+  const ctx = document.getElementById("scoreChart");
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'คะแนนสะสม',
+        data: scores,
+        backgroundColor: 'rgba(77,182,172,0.75)',
+        borderColor: '#00796b',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => `คะแนน: ${ctx.parsed.y} แต้ม`
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero:true, title:{ display:true, text:'คะแนน' } },
+        x: { title:{ display:true, text:'ชื่อนักเรียน' } }
+      }
+    }
+  });
+
+  const summaryBox = document.getElementById("summaryBox");
+  const top3 = studentScores.slice(0,3).map((e,i)=>{
+    const nm = nameMap[e.studentId] || e.studentId;
+    return `<li>อันดับ ${i+1}: <strong>${nm}</strong> — ${e.total} แต้ม</li>`;
+  }).join("");
+
+  const percentList = Object.entries(wasteTypeCounts).map(([k,v])=>{
+    const perc = totalWasteItems ? ((v/totalWasteItems)*100).toFixed(1) : 0;
+    return `<li>${k}: ${v} ชิ้น (${perc}%)</li>`;
+  }).join("");
+
+  summaryBox.innerHTML = `
+    <h3>🎖️ อันดับ 1–3</h3>
+    <ul>${top3}</ul>
+    <h3>♻️ สัดส่วนขยะ</h3>
+    <ul>${percentList}</ul>
+    <h3>🧾 ปริมาณขยะรวม: ${totalWasteItems} ชิ้น</h3>
+  `;
+}
+
+// เรียกฟังก์ชัน
+loadAndRender();
+
+// ถ้าต้องการ real-time: refresh ทุก 3 วินาที
+setInterval(loadAndRender, 3000);
+
+
+  loadAndRender();
+</script>
+
+</body>
+</html>
