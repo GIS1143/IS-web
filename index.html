@@ -127,7 +127,7 @@
     <button id="resetButton" class="log-button negative small" title="ล้างข้อมูล (ต้องมีรหัสผ่าน)" style="position:fixed; top:12px; right:12px; z-index:2000;">ล้าง</button>
 
     <button class="log-button" onclick="showEntryPopup()">+ เพิ่มข้อมูลเอง</button>
-    <button class="log-button" onclick="window.open('graph.html','_blank')">📊 ดูกราฟคะแนน</button>
+    <button class="log-button" onclick="window.open('graph.html','_blank')">📊 กราฟคะแนน</button>
   </div>
 
   <table aria-label="ตารางคะแนน">
@@ -146,7 +146,6 @@
 
   <div id="overlay"></div>
 
-  <!-- POPUP: ดูประวัติ -->
 
   <div id="popup" class="popup" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <h2 id="historyTitle">ประวัติการทิ้งขยะ</h2>
@@ -154,11 +153,10 @@
 
     <div id="logList" style="margin-top:8px;"></div>
     <div class="row" style="margin-top:14px;">
-      <button class="log-button" onclick="closePopup()">ปิด</button>
+      <button class="log-button" onclick="closePopup()">X</button>
     </div>
   </div>
-
-  <!-- POPUP: เพิ่มข้อมูลเอง -->
+  
   <div id="entryPopup" class="popup" role="dialog" aria-labelledby="entryTitle">
     <h2 id="entryTitle">เพิ่มข้อมูลการทิ้งขยะ</h2>
 
@@ -167,18 +165,18 @@
 
    <label class="small-muted">จำนวนขยะ (ชิ้น)<br></label>
 
-<label>🧴 ขวดพลาสติก</label>
+<label>ขวดพลาสติก</label>
 <input type="number" id="qtyA" min="0" value="0">
 
-<label>🛍 พลาสติกอื่นๆ</label>
+<label>พลาสติกอื่นๆ</label>
 <input type="number" id="qtyB" min="0" value="0">
 
-<label>🗑 ขยะทั่วไป</label>
+<label>ขยะทั่วไป</label>
 <input type="number" id="qtyC" min="0" value="0">
 
     <div class="row">
-      <button class="log-button" onclick="submitEntry(),closeOverlay();">บันทึก</button>
-      <button class="log-button" onclick="closePopup(),closeOverlay()">ยกเลิก</button>
+      <button class="log-button" onclick="submitEntry(),closeOverlay();">save</button>
+      <button class="log-button" onclick="closePopup(),closeOverlay()">cancle</button>
     </div>
   </div>
 
@@ -187,7 +185,6 @@
 
 <script>
 
-/* ================== CONFIG ================== */
 const scoreMap = {
   "ขวดพลาสติก": 10,
   "พลาสติกอื่นๆ": 5,
@@ -197,19 +194,14 @@ const scoreMap = {
   "หักคะแนน": -1
 };
 
-/* ============== APP STATE ============== */
-let students = {}; // id -> name (load from students.json if present)
+let students = {}; 
 let logs = {};
-
-/* ============== UTIL ============== */
 function saveLogs(){
   localStorage.setItem("logs", JSON.stringify(logs));
 }
 
-/* ============== POPUP HELPERS ============== */
 function openOverlay(){ document.getElementById("overlay").style.display = "block"; }
 function closeOverlay(){ document.getElementById("overlay").style.display = "none"; }
-/* ============== LOAD STUDENTS ============== */
 async function loadStudents(){
   try {
     const res = await fetch('students.json');
@@ -222,29 +214,21 @@ async function loadStudents(){
 }
 function summarizeWaste(entries){
   const sum = { A:0, B:0, C:0, D:0, totalScore:0 };
-  const scoreMap = { A:10, B:5, C:3, D:0 }; // กำหนดคะแนน
+  const scoreMap = { A:10, B:5, C:3, D:0 };
   entries.forEach(e=>{
     sum.A += e.A || 0;
     sum.B += e.B || 0;
     sum.C += e.C || 0;
     sum.D += e.D || 0;
 
-    // คำนวณคะแนนรวม
     sum.totalScore += ( (e.A||0)*scoreMap.A + (e.B||0)*scoreMap.B + (e.C||0)*scoreMap.C + (e.D||0)*scoreMap.D );
   });
   return sum;
 }
 
 
-  /*entries.forEach(e=>{
-    if(sum[e.type] !== undefined){
-      sum[e.type] += e.quantity || 1;
-    }
-  });  ctx
-  return sum;
-}*/
+ 
 
-/* ============== RENDER TABLE ============== */
 function renderTable(){
   const table = document.getElementById("student-table");
   table.innerHTML = "";
@@ -253,17 +237,17 @@ function renderTable(){
     const entries = logs[id];
     if(!entries || entries.length === 0) continue;
 
-    const wasteSum = summarizeWaste(entries); // ได้ totalScore ด้วย
+    const wasteSum = summarizeWaste(entries); 
     const last = entries[entries.length - 1];
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${students[id] || (logs[id].name || "ไม่พบชื่อ")}</td>
+      <td>${students[id] || (logs[id].name || "noname")}</td>
       <td>${id}</td>
       <td>${last.time || "-"}</td>
       <td>${wasteSum.A} - ${wasteSum.B} - ${wasteSum.C} - ${wasteSum.D}</td>
       <td>${wasteSum.totalScore}</td>
-      <td><button class="log-button small" onclick="showLogs('${id}')">ดู</button></td>
+      <td><button class="log-button small" onclick="showLogs('${id}')">see</button></td>
     `;
     table.appendChild(row);
   }
@@ -280,15 +264,6 @@ function summarizeLastRound(entries){
 }
 
 
-  /*entries.forEach(e=>{
-    if(e.time === lastTime && sum[e.type] !== undefined){
-      sum[e.type] += e.quantity || 0;
-    }
-  });
-
-  return sum;
-}*/
-
 function closePopup(){
   document.getElementById("popup").style.display = "none";
   document.getElementById("entryPopup").style.display = "none";
@@ -301,7 +276,6 @@ function closePopup(){
 function showEntryPopup(){
   document.getElementById("entryPopup").style.display = "block";
   openOverlay();
-  // reset defaults
   document.getElementById("qtyA").value = 0;
 document.getElementById("qtyB").value = 0;
 document.getElementById("qtyC").value = 0;
@@ -309,7 +283,6 @@ document.getElementById("qtyD").value = 0;
 
 }
 
-/* ============== SUBMIT ENTRY ============== */
 function submitEntry(){
   const studentId = document.getElementById("studentIdInput").value.trim();
   if(!studentId){
@@ -345,9 +318,6 @@ function submitEntry(){
   closePopup();
 }
 
-
-
-/* ============== SHOW LOGS ============== */
 function showLogs(id){
   const entries = logs[id] || [];
   const summaryBox = document.getElementById("summary");
@@ -391,7 +361,6 @@ function showLogs(id){
   openOverlay();
 }
 
-/* ============== RESET BUTTON ============== */
 document.getElementById("resetButton").addEventListener("click", () => {
   if(!confirm("🚨 ระวัง! คุณกำลังจะล้างข้อมูลทั้งหมด! ")) return;
   const pass = prompt("กรุณาใส่รหัสผ่าน เพื่อยืนยันการรีเซ็ตข้อมูล:");
@@ -405,33 +374,30 @@ document.getElementById("resetButton").addEventListener("click", () => {
   }
 });
 
-/* ============== BOOT ============== */
-// โหลดข้อมูลจากเซิร์ฟเวอร์
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadStudents();   // โหลดชื่อจาก students.json
-  await loadLogsFromServer(); // โหลดคะแนนล่าสุด
+  await loadStudents();   
+  await loadLogsFromServer();
 });
 
 async function loadLogsFromServer(){
   try {
     const res = await fetch("https://robotwaste-server-2.onrender.com/logs")
 ;
-    if(!res.ok) throw new Error("ไม่สามารถโหลดข้อมูลจาก server");
+    if(!res.ok) throw new Error("can not load info from server");
     const data = await res.json();
-    logs = data;  // อัปเดต global logs
-    renderTable(); // render ใหม่ทุกครั้ง
+    logs = data;  
+    renderTable(); 
   } catch(err){
     console.error("Error fetching logs:", err);
   }
 }
 
-// เริ่ม refresh ทุก 3 วินาที
 setInterval(loadLogsFromServer, 3000);
 
 
 
 
-// close overlay/popup when clicking outside popups
+
 document.getElementById("overlay").addEventListener("click", () => {
   closePopup();
 });
